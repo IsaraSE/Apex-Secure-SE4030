@@ -1,0 +1,43 @@
+rules:
+  - id: apex-hardcoded-jwt-fallback-secret
+    languages: [typescript, javascript]
+    message: "Cryptographic Failure (A02): Hardcoded JWT fallback secret detected. If JWT_SECRET environment variable is missing, an attacker can forge administrative tokens."
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: process.env.JWT_SECRET || "..."
+          - pattern: process.env.JWT_REFRESH_SECRET || "..."
+
+  - id: apex-permissive-cors-regex
+    languages: [typescript, javascript]
+    message: "Security Misconfiguration (A05): Overly permissive CORS check allows any arbitrary subdomain ending with .vercel.app. Malicious actors on vercel.app can access credentials."
+    severity: WARNING
+    patterns:
+      - pattern: parsedOrigin.hostname.endsWith(".vercel.app")
+
+  - id: apex-nosql-regex-injection
+    languages: [typescript, javascript]
+    message: "Injection (A03): Direct insertion of user-supplied search string into MongoDB $regex query without sanitization enables ReDoS or operator injection."
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: "{ name: { $regex: $SEARCH, ... } }"
+          - pattern: "{ email: { $regex: $SEARCH, ... } }"
+          - pattern: "{ itemName: { $regex: $SEARCH, ... } }"
+          - pattern: "{ eventName: { $regex: $SEARCH, ... } }"
+
+  - id: apex-localstorage-jwt-storage
+    languages: [typescript, javascript]
+    message: "Cryptographic Failures / Insecure Session Storage (A02/A07): Sensitive authentication tokens are stored in browser localStorage, making them accessible to XSS attacks."
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.setItem("accessToken", ...)
+          - pattern: localStorage.setItem("refreshToken", ...)
+
+  - id: apex-missing-rate-limiting-auth
+    languages: [typescript, javascript]
+    message: "Insecure Design (A04): Authentication endpoints lack rate limiting middleware, leaving routes vulnerable to automated brute-force and credential stuffing."
+    severity: ERROR
+    patterns:
+      - pattern: router.post("/login", validate(loginSchema), login)
