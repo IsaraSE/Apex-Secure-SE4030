@@ -1,15 +1,21 @@
 import { Request, Response, NextFunction } from "express";
+import { logger } from "../utils/logger";
 
 export const errorHandler = (
   err: Error,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ): void => {
-  console.error("❌ Error:", err.message);
+  logger.error(err.message, {
+    stack: err.stack,
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+  });
 
   if (err.name === "ValidationError") {
-    res.status(400).json({ message: "Validation Error", error: err.message });
+    res.status(400).json({ message: "Validation Error" });
     return;
   }
 

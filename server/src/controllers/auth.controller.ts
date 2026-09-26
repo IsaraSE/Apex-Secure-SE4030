@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/auth";
+import { logger, logSecurityEvent } from "../utils/logger";
 
 const generateTokens = (user: any) => {
   const payload = { id: user._id, role: user.role, email: user.email };
@@ -79,6 +80,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const tokens = generateTokens(user);
 
+    logSecurityEvent("REGISTRATION", req, { email: user.email, role: user.role });
+
     res.status(201).json({
       message: "Registration successful",
       user: {
@@ -92,7 +95,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       ...tokens,
     });
   } catch (error: any) {
-    res.status(500).json({ message: "Registration failed", error: error.message });
+    logger.error("Registration failed", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
+    res.status(500).json({ message: "Registration failed" });
   }
 };
 
@@ -102,22 +106,27 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      logSecurityEvent("LOGIN_FAILED_UNKNOWN_EMAIL", req, { email });
       res.status(401).json({ message: "Invalid email or password" });
       return;
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      logSecurityEvent("LOGIN_FAILED_BAD_PASSWORD", req, { email, userId: user._id });
       res.status(401).json({ message: "Invalid email or password" });
       return;
     }
 
     if (user.status === "inactive") {
+      logSecurityEvent("LOGIN_FAILED_INACTIVE_ACCOUNT", req, { email, userId: user._id });
       res.status(403).json({ message: "Account is deactivated. Contact admin." });
       return;
     }
 
     const tokens = generateTokens(user);
+
+    logSecurityEvent("LOGIN_SUCCESS", req, { email, userId: user._id });
 
     res.json({
       message: "Login successful",
@@ -132,7 +141,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       ...tokens,
     });
   } catch (error: any) {
-    res.status(500).json({ message: "Login failed", error: error.message });
+    logger.error("Login failed", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
+    res.status(500).json({ message: "Login failed" });
   }
 };
 
@@ -158,8 +168,13 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     const tokens = generateTokens(user);
     res.json({ ...tokens });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Invalid refresh token";
-    res.status(401).json({ message });
+    logger.warn("Refresh token failed", {
+      stack: error instanceof Error ? error.stack : undefined,
+      method: req.method,
+      path: req.originalUrl,
+      ip: req.ip,
+    });
+    res.status(401).json({ message: "Invalid or expired refresh token" });
   }
 };
 
@@ -172,7 +187,8 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
     }
     res.json(user);
   } catch (error: any) {
-    res.status(500).json({ message: "Failed to fetch profile", error: error.message });
+    logger.error("Failed to fetch profile", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
+    res.status(500).json({ message: "Failed to fetch profile" });
   }
 };
 
@@ -228,7 +244,8 @@ export const updateMe = async (req: AuthRequest, res: Response): Promise<void> =
 
     res.json({ message: "Profile updated successfully", user });
   } catch (error: any) {
-    res.status(500).json({ message: "Failed to update profile", error: error.message });
+    logger.error("Failed to update profile", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
+    res.status(500).json({ message: "Failed to update profile" });
   }
 };
 
@@ -269,9 +286,12 @@ export const changeMyPassword = async (req: AuthRequest, res: Response): Promise
     user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
 
+    logSecurityEvent("PASSWORD_CHANGED", req, { userId: user._id });
+
     res.json({ message: "Password changed successfully." });
   } catch (error: any) {
-    res.status(500).json({ message: "Failed to change password", error: error.message });
+    logger.error("Failed to change password", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
+    res.status(500).json({ message: "Failed to change password" });
   }
 };
 
@@ -312,8 +332,11 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response): Promise<
 
     await User.findByIdAndDelete(userId);
 
+    logSecurityEvent("ACCOUNT_DELETED", req, { userId });
+
     res.json({ message: "Account deleted successfully." });
   } catch (error: any) {
-    res.status(500).json({ message: "Failed to delete account", error: error.message });
+    logger.error("Failed to delete account", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
+    res.status(500).json({ message: "Failed to delete account" });
   }
 };
