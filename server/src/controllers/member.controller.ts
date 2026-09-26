@@ -3,11 +3,17 @@ import mongoose from "mongoose";
 import User from "../models/User";
 import Session from "../models/Session";
 import { AuthRequest } from "../middleware/auth";
+import { toSafeString } from "../utils/sanitize";
 
 export const getAllMembers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
-    const { search, role, status, sport, page = "1", limit = "20" } = req.query;
+    const search = toSafeString(req.query.search);
+    const role = toSafeString(req.query.role);
+    const status = toSafeString(req.query.status);
+    const sport = toSafeString(req.query.sport);
+    const page = toSafeString(req.query.page) ?? "1";
+    const limit = toSafeString(req.query.limit) ?? "20";
 
     const query: any = {};
     if (search) {
@@ -35,7 +41,7 @@ export const getAllMembers = async (req: AuthRequest, res: Response): Promise<vo
     const skip = (pageNum - 1) * limitNum;
 
     const [members, total] = await Promise.all([
-            // [SECURITY][V6] VULNERABLE: unsanitized query object is passed directly to User.find() and User.countDocuments(). OWASP A03:2021
+      // [SECURITY][V6] VULNERABLE: unsanitized query object is passed directly to User.find() and User.countDocuments(). OWASP A03:2021
       User.find(query).select("-password").skip(skip).limit(limitNum).sort({ createdAt: -1 }),
       User.countDocuments(query),
     ]);
@@ -189,8 +195,8 @@ export const getAttendance = async (req: AuthRequest, res: Response): Promise<vo
 
 export const getDailyAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-        // [SECURITY][V6] VULNERABLE: "date" from req.query is not type-checked (can be an object/array instead of a string). OWASP A03:2021
-    const { date } = req.query;
+    // [SECURITY][V6] VULNERABLE: "date" from req.query is not type-checked (can be an object/array instead of a string). OWASP A03:2021
+    const date = toSafeString(req.query.date);
     const targetDate = date ? new Date(date as string) : new Date();
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);

@@ -11,6 +11,7 @@ import inventoryRoutes from "./routes/inventory.routes";
 import sessionRoutes from "./routes/session.routes";
 import paymentRoutes from "./routes/payment.routes";
 import notificationRoutes from "./routes/notification.routes";
+import { mongoSanitize } from "./middleware/mongoSanitize";
 
 const normalizeOrigin = (value: string | undefined): string | undefined => {
   const rawValue = value?.trim();
@@ -69,8 +70,8 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// [SECURITY][V6] VULNERABLE: no global sanitizer strips MongoDB operators ($ne, $gt, $where...) from req.body, req.query and req.params before they reach the controllers. OWASP A03:2021
-
+// [SECURITY][V6] FIXED: strip MongoDB operators from all incoming request data
+app.use(mongoSanitize);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);
