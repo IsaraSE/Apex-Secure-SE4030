@@ -155,6 +155,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // SECURITY: Current refresh-token processing verifies token validity
+    // and user existence but does not verify whether the account is active.
+    // A refresh token issued before deactivation can therefore be used
+    // to obtain new authentication credentials.
     const tokens = generateTokens(user);
     res.json({ ...tokens });
   } catch (error: unknown) {
