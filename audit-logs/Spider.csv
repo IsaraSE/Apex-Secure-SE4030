@@ -1,0 +1,87 @@
+Processed,Method,URI,Flags
+true,GET,http://localhost:3000/,Seed
+true,GET,http://localhost:3000/robots.txt,Seed
+true,GET,http://localhost:3000/sitemap.xml,Seed
+true,GET,http://localhost:3000/images/hero.png,
+true,GET,http://localhost:3000/images/cricket.png,
+true,GET,http://localhost:3000/images/football.png,
+true,GET,http://localhost:3000/images/badminton.png,
+true,GET,http://localhost:3000/about,
+true,GET,http://localhost:3000/faq,
+true,GET,http://localhost:3000/contact,
+true,GET,http://localhost:3000/register,
+true,GET,http://localhost:3000/login,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326657723,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326657723,
+true,GET,http://localhost:3000/favicon.ico?603d046c9a6fdfbb,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326657723,
+true,GET,http://localhost:3000/_next/static/chunks/app-pages-internals.js,
+true,GET,http://localhost:3000/_next/static/chunks/app/layout.js,
+true,GET,http://localhost:3000/_next/static/chunks/app/page.js,
+true,GET,http://localhost:3000/_next/static/chunks/polyfills.js,
+false,GET,https://webpack.js.org/configuration/devtool/,Out of Scope
+false,GET,https://webpack.js.org/configuration/mode/,Out of Scope
+false,GET,https://tailwindcss.com/,Out of Scope
+false,GET,https://github.com/mozdevs/cssremedy/issues/4,Out of Scope
+false,GET,https://github.com/tailwindcss/tailwindcss/pull/116,Out of Scope
+false,GET,https://bugzilla.mozilla.org/show_bug.cgi?id=190655,Out of Scope
+false,GET,"https://bugs.chromium.org/p/chromium/issues/detail?id=999088,",Out of Scope
+false,GET,https://bugs.webkit.org/show_bug.cgi?id=201297,Out of Scope
+false,GET,"https://bugs.chromium.org/p/chromium/issues/detail?id=935729,",Out of Scope
+false,GET,https://bugs.webkit.org/show_bug.cgi?id=195016,Out of Scope
+false,GET,https://github.com/mozilla/gecko-dev/blob/2f9eacd9d3d995c937b4251a5557d95d494c9be1/layout/style/res/forms.css,Out of Scope
+false,GET,https://github.com/tailwindlabs/tailwindcss/issues/3300,Out of Scope
+false,GET,https://github.com/mozdevs/cssremedy/issues/14,Out of Scope
+false,GET,https://github.com/jensimmons/cssremedy/issues/14,Out of Scope
+false,GET,https://www.transparenttextures.com/patterns/carbon-fibre.png,Out of Scope
+false,GET,https://github.com/vercel/next.js/pull/53797,Out of Scope
+false,GET,https://nextjs.org/docs/messages/sync-dynamic-apis%60,Out of Scope
+false,GET,https://nextjs.org/docs/messages/missing-data-scroll-behavior,Out of Scope
+false,GET,https://github.com/vercel/next.js/issues/40719,Out of Scope
+false,GET,https://github.com/cloudflare/workerd/issues/902%5Cn,Out of Scope
+false,GET,https://developer.mozilla.org/docs/Web/API/XMLHttpRequest/error_event%5Cn,Out of Scope
+false,GET,http://www.google.com/,Out of Scope
+false,GET,https://nodejs.org/api/http.html,Out of Scope
+true,GET,http://localhost/,
+false,GET,https://github.com/facebook/react-native/blob/26684cf3adf4094eb6c405d345a75bf8c7c0bf88/Libraries/Network/FormData.js,Out of Scope
+false,GET,https://github.com/DigitalBrainJS/AxiosPromise/blob/16deab13710ec09779922131f3fa5954320f83ab/lib/utils.js,Out of Scope
+false,GET,https://feross.org/,Out of Scope
+false,GET,https://feross.org/opensource,Out of Scope
+false,GET,https://react.dev/link/special-props,Out of Scope
+true,GET,http://localhost:5000/api%5C,
+false,GET,https://github.com/zloirock/core-js/blob/v3.38.1/LICENSE,Out of Scope
+false,GET,https://github.com/zloirock/core-js,Out of Scope
+false,GET,https://a/,Out of Scope
+false,GET,https://a/c%20d?a=1&c=3,Out of Scope
+false,GET,https://b/,Out of Scope
+false,GET,https://x/,Out of Scope
+true,GET,http://localhost:3000/faq_hero.png,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326667254,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326667254,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326667256,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326667256,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326667254,
+true,GET,http://localhost:3000/_next/static/chunks/app/faq/page.js,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326667256,
+true,GET,http://localhost:3000/_next/static/chunks/app/register/page.js,
+true,GET,http://localhost:3000/contact_hero.png,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326667257,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326667257,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326667257,
+true,GET,http://localhost:3000/_next/static/chunks/app/contact/page.js,
+true,GET,http://localhost:3000/register?confirmPassword=ZAP&email=zaproxy%40example.com&membershipType=monthly&name=ZAP&password=ZAP&phone=9999999999&sport=Cricket,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326667258,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326667258,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326667258,
+true,GET,http://localhost:3000/_next/static/chunks/app/login/page.js,
+true,GET,http://localhost:3000/about_hero.png,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326667260,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326667260,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326667260,
+true,GET,http://localhost:3000/_next/static/chunks/app/about/page.js,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326667370,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326667370,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326667370,
+true,GET,http://localhost:3000/_next/static/css/app/layout.css?v=1790326667870,
+true,GET,http://localhost:3000/_next/static/chunks/webpack.js?v=1790326667870,
+true,GET,http://localhost:3000/_next/static/chunks/main-app.js?v=1790326667870,

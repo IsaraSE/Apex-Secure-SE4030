@@ -1,9 +1,16 @@
 import { Request, Response } from "express";
 import Inventory from "../models/Inventory";
+import { toSafeString } from "../utils/sanitize";
 
 export const getAllInventory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { search, category, sport, condition } = req.query;
+
+
+    // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
+    const search = toSafeString(req.query.search);
+    const category = toSafeString(req.query.category);
+    const sport = toSafeString(req.query.sport);
+    const condition = toSafeString(req.query.condition);
 
     const query: any = {};
     if (search) {
@@ -16,6 +23,7 @@ export const getAllInventory = async (req: Request, res: Response): Promise<void
     if (sport) query.sport = sport;
     if (condition) query.condition = condition;
 
+    // [SECURITY][V6] VULNERABLE: unsanitized query object is passed directly to Inventory.find(). OWASP A03:2021
     const items = await Inventory.find(query).sort({ createdAt: -1 });
 
     const itemsWithAlerts = items.map((item) => ({
@@ -38,15 +46,15 @@ export const createInventoryItem = async (req: Request, res: Response): Promise<
       usageHistory:
         initialStock > 0
           ? [
-              {
-                date: new Date(),
-                type: "in",
-                change: initialStock,
-                previousStock: 0,
-                newStock: initialStock,
-                reason: "Initial stock",
-              },
-            ]
+            {
+              date: new Date(),
+              type: "in",
+              change: initialStock,
+              previousStock: 0,
+              newStock: initialStock,
+              reason: "Initial stock",
+            },
+          ]
           : [],
     });
     res.status(201).json({ message: "Item added successfully", item });
