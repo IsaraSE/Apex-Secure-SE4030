@@ -3,6 +3,7 @@ import Session from "../models/Session";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/auth";
 import { notifyMembersBySport } from "../services/notification.service";
+import { toSafeString, toSafeObjectId } from "../utils/sanitize";
 
 const toSessionDateTime = (date: Date | string, time: string): Date => {
   const day = new Date(date).toISOString().split("T")[0];
@@ -61,10 +62,14 @@ export const getAllSessions = async (req: AuthRequest, res: Response): Promise<v
   try {
     await autoCompleteOverdueSessions();
 
-    
-    // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values (sport, status, coachId, dates) are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
-    const { search, sport, status, coachId, startDate, endDate } = req.query;
 
+    // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values (sport, status, coachId, dates) are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
+    const search = toSafeString(req.query.search);
+    const sport = toSafeString(req.query.sport);
+    const status = toSafeString(req.query.status);
+    const coachId = toSafeObjectId(req.query.coachId);
+    const startDate = toSafeString(req.query.startDate);
+    const endDate = toSafeString(req.query.endDate);
     const query: any = {};
     if (search) {
       query.$or = [

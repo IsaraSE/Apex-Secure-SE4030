@@ -1,3 +1,6 @@
+import dns from "node:dns";
+dns.setServers(["8.8.8.8", "1.1.1.1"]); // LOCAL ONLY - fixes Atlas SRV lookup on my Wi-Fi
+
 import dotenv from "dotenv";
 import connectDB from "./config/db";
 import app from "./app";

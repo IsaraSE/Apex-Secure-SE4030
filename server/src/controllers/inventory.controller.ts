@@ -1,11 +1,16 @@
 import { Request, Response } from "express";
 import Inventory from "../models/Inventory";
+import { toSafeString } from "../utils/sanitize";
 
 export const getAllInventory = async (req: Request, res: Response): Promise<void> => {
   try {
 
+
     // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
-    const { search, category, sport, condition } = req.query;
+    const search = toSafeString(req.query.search);
+    const category = toSafeString(req.query.category);
+    const sport = toSafeString(req.query.sport);
+    const condition = toSafeString(req.query.condition);
 
     const query: any = {};
     if (search) {
