@@ -1,3 +1,5 @@
+// [SECURITY][V5] VULNERABLE: express pulls in outdated qs/body-parser with DoS bugs. A06:2021
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
