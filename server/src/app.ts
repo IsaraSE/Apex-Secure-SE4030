@@ -69,6 +69,8 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// [SECURITY][V6] VULNERABLE: no global sanitizer strips MongoDB operators ($ne, $gt, $where...) from req.body, req.query and req.params before they reach the controllers. OWASP A03:2021
+
 
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);

@@ -61,6 +61,8 @@ export const getAllSessions = async (req: AuthRequest, res: Response): Promise<v
   try {
     await autoCompleteOverdueSessions();
 
+    
+    // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values (sport, status, coachId, dates) are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
     const { search, sport, status, coachId, startDate, endDate } = req.query;
 
     const query: any = {};
@@ -93,6 +95,8 @@ export const getAllSessions = async (req: AuthRequest, res: Response): Promise<v
       if (endDate) query.date.$lte = new Date(endDate as string);
     }
 
+
+    // [SECURITY][V6] VULNERABLE: unsanitized query object is passed directly to Session.find(). OWASP A03:2021
     const sessions = await Session.find(query)
       .populate("coachId", "name email sport")
       .sort({ date: 1, startTime: 1 });

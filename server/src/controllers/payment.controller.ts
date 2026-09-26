@@ -21,6 +21,7 @@ const validateAmountByMethod = (amount: number, method?: string): string | null 
 
 export const getAllPayments = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+      // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values (status, method, memberId, dates) are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
     const { status, method, startDate, endDate, memberId } = req.query;
 
     const query: any = {};
@@ -36,7 +37,8 @@ export const getAllPayments = async (req: AuthRequest, res: Response): Promise<v
       if (startDate) query.date.$gte = new Date(startDate as string);
       if (endDate) query.date.$lte = new Date(endDate as string);
     }
-
+    
+    // [SECURITY][V6] VULNERABLE: unsanitized query object is passed directly to Payment.find(). OWASP A03:2021
     const payments = await Payment.find(query)
       .populate("memberId", "name email sport")
       .populate("requestedBy", "name email")
