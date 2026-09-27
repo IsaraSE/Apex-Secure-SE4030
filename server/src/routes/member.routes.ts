@@ -20,23 +20,23 @@ router.use(authenticate);
 
 router.get("/stats", authorize("admin", "coach", "member"), getDashboardStats);
 
-// Vulnerability 1 (OWASP A01:2021 - Broken Access Control & Unrestricted Data Exposure):
-// The "member" role is explicitly permitted to query this endpoint. Regular members can
-// retrieve the entire membership directory (including names, emails, phone numbers,
-// membership types, and assigned sports), exposing confidential user data across accounts.
-router.get("/", authorize("admin", "coach", "member"), getAllMembers);
+// [V1: FIX] - Restrict member directory listing to admin and coach roles only.
+// Regular members are strictly disallowed from listing all registered club members,
+// preventing unrestricted horizontal and vertical data exposure across accounts (OWASP A01:2021).
+router.get("/", authorize("admin", "coach"), getAllMembers);
 router.get("/attendance/today", authorize("admin", "coach"), getDailyAttendance);
 
-// Vulnerability 1 (OWASP A01:2021 - Broken Access Control / IDOR):
-// Route-level role-based authorization middleware is omitted here. Any authenticated
-// user can invoke this endpoint directly with an arbitrary member ID.
-router.get("/:id", getMemberById);
+// [V1: FIX] - Enforce defense-in-depth route-level authentication and role validation.
+// Access to member profile records by ID is restricted to authorized roles (admin, coach, member);
+// individual ownership (req.user.id === member._id) is enforced in the controller.
+router.get("/:id", authorize("admin", "coach", "member"), getMemberById);
 router.put("/:id", authorize("admin"), validate(updateMemberSchema), updateMember);
 router.patch("/:id/status", authorize("admin"), toggleMemberStatus);
 
-// Vulnerability 1 (OWASP A01:2021 - Broken Access Control / IDOR):
-// Missing route-level role authorization middleware for attendance history by member ID.
-router.get("/:id/attendance", getAttendance);
+// [V1: FIX] - Enforce defense-in-depth route-level authorization on attendance history.
+// Lookups are guarded so that members may only retrieve their own attendance records,
+// while coaches can only query members in their assigned sport (OWASP A01:2021 IDOR fix).
+router.get("/:id/attendance", authorize("admin", "coach", "member"), getAttendance);
 router.post("/:id/attendance", authorize("admin", "coach"), validate(attendanceSchema), logAttendance);
 
 export default router;

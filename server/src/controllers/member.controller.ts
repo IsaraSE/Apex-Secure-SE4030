@@ -26,11 +26,14 @@ export const getAllMembers = async (req: AuthRequest, res: Response): Promise<vo
     if (status) query.status = status;
     if (sport) query.sport = sport;
 
-    // Vulnerability 1 (OWASP A01:2021 - Broken Access Control & Unrestricted Data Exposure):
-    // Scoping restrictions are only applied when req.user.role === "coach". For accounts with
-    // role "member", no ownership or data-scoping filter is enforced on the query object.
-    // As a result, regular members receive the entire collection of users from User.find(query),
-    // exposing all user accounts across the sports club.
+    // [V1: FIX] - Broken Access Control & Unrestricted Data Exposure (OWASP A01:2021).
+    // Enforce defensive role check: standard members are prohibited from querying the member directory.
+    // Only administrators and coaches are authorized to list member records.
+    if (req.user?.role !== "admin" && req.user?.role !== "coach") {
+      res.status(403).json({ message: "Access denied. Insufficient permissions to list members." });
+      return;
+    }
+
     if (req.user?.role === "coach") {
       const coach = await User.findById(req.user.id).select("sport");
       if (!coach) {
@@ -67,6 +70,15 @@ export const getAllMembers = async (req: AuthRequest, res: Response): Promise<vo
 export const getMemberById = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
+
+    // [V1: FIX] - Prevent IDOR (Insecure Direct Object Reference - OWASP A01:2021).
+    // Validate ObjectId format and enforce strict ownership verification so members
+    // cannot query or view profile details of other members.
+    if (typeof req.params.id !== "string" || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ message: "Invalid member ID format." });
+      return;
+    }
+
     const member = await User.findById(req.params.id).select("-password");
     if (!member) {
       res.status(404).json({ message: "Member not found" });
@@ -166,6 +178,15 @@ export const toggleMemberStatus = async (req: Request, res: Response): Promise<v
 
 export const getAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // [V1: FIX] - Prevent IDOR (Insecure Direct Object Reference - OWASP A01:2021).
+    // Validate ObjectId format and enforce strict ownership verification:
+    // Standard members may only view their own attendance (req.user.id === member._id),
+    // and coaches may only view attendance for members registered in their sport discipline.
+    if (typeof req.params.id !== "string" || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ message: "Invalid member ID format." });
+      return;
+    }
+
     const member = await User.findById(req.params.id)
       .select("attendance name sport role")
       .populate("attendance.sessionId", "eventName date location");
@@ -175,10 +196,6 @@ export const getAttendance = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Vulnerability 1 (OWASP A01:2021 - Broken Access Control / Insecure Direct Object Reference):
-    // Object lookup relies directly on client-controlled parameter req.params.id without
-    // route-level authorization guards. While role checks exist here, missing route middleware
-    // and lack of ownership abstraction make attendance histories susceptible to IDOR tampering.
     if (req.user?.role === "member" && req.user.id !== member._id.toString()) {
       res.status(403).json({ message: "Members can only view their own attendance." });
       return;
