@@ -7,6 +7,7 @@ import {
 	updateMe,
 	changeMyPassword,
 	deleteMyAccount,
+	googleLogin,
 } from "../controllers/auth.controller";
 import { authenticate, authenticateOptional } from "../middleware/auth";
 import { validate } from "../middleware/validate";
@@ -22,6 +23,7 @@ const router = Router();
 
 router.post("/register", authenticateOptional, validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
+router.post("/google-login", googleLogin);
 router.post("/refresh", refreshToken);
 router.get("/me", authenticate, getMe);
 router.put("/me", authenticate, validate(updateMeSchema), updateMe);
