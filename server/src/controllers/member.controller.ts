@@ -187,17 +187,19 @@ export const getAttendance = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    // [V1: FIX] - Strict Ownership Check (OWASP A01:2021):
+    // Standard members are prohibited from accessing attendance logs of any other member.
+    if (req.user?.role === "member" && req.user.id !== req.params.id) {
+      res.status(403).json({ message: "You can only view your own attendance records." });
+      return;
+    }
+
     const member = await User.findById(req.params.id)
       .select("attendance name sport role")
       .populate("attendance.sessionId", "eventName date location");
 
     if (!member) {
       res.status(404).json({ message: "Member not found" });
-      return;
-    }
-
-    if (req.user?.role === "member" && req.user.id !== member._id.toString()) {
-      res.status(403).json({ message: "Members can only view their own attendance." });
       return;
     }
 
