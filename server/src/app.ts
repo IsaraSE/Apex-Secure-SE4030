@@ -36,8 +36,9 @@ const allowedOrigins = new Set<string>([
 ].filter((origin): origin is string => Boolean(origin)));
 
 const isAllowedCorsOrigin = (origin: string | undefined): boolean => {
+  // Allow non-browser clients (Postman, mobile apps, curl, server-to-server) where Origin is undefined
   if (!origin) {
-    return false;
+    return true;
   }
 
   if (allowedOrigins.has(origin)) {
