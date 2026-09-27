@@ -1,0 +1,147 @@
+{
+  "info": {
+    "_postman_id": "apex-ssd-v1-v2-demo-collection",
+    "name": "Apex Security Demo - V1 (IDOR) & V2 (JWT Secrets)",
+    "description": "Postman test collection for SE4030 Video Demonstration of Vulnerability 1 (IDOR & Member Data Leakage) and Vulnerability 2 (JWT Cryptographic Fallback Secrets).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "memberToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "memberId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "victimMemberId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "forgedAdminToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Setup - Login as Dinesh (Member)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.accessToken) {",
+              "    pm.collectionVariables.set('memberToken', jsonData.accessToken);",
+              "    pm.collectionVariables.set('memberId', jsonData.user.id);",
+              "    console.log('Member Logged In! Token and ID saved.');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"dinesh@apex.lk\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        },
+        "description": "Logs in as demo member Dinesh and automatically saves accessToken and memberId to collection variables."
+      }
+    },
+    {
+      "name": "1. V1 - Try to List All Members (Access Control Test)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{memberToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/members",
+          "host": ["{{baseUrl}}"],
+          "path": ["members"]
+        },
+        "description": "BEFORE: Returned 200 OK with all members' personal records (phone numbers, full names, emails).\nAFTER FIX: Returns 403 Forbidden because members are restricted from directory scraping."
+      }
+    },
+    {
+      "name": "2. V1 - Access Own Attendance (Legitimate Access)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{memberToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/members/{{memberId}}/attendance",
+          "host": ["{{baseUrl}}"],
+          "path": ["members", "{{memberId}}", "attendance"]
+        },
+        "description": "Shows normal expected behavior: Member requesting their OWN attendance logs returns 200 OK."
+      }
+    },
+    {
+      "name": "3. V1 - IDOR Attack - Access Another Member's Attendance",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{memberToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/members/65f1a2000000000000000002/attendance",
+          "host": ["{{baseUrl}}"],
+          "path": ["members", "65f1a2000000000000000002", "attendance"]
+        },
+        "description": "BEFORE: Returned 200 OK with victim's attendance records.\nAFTER FIX: Returns 403 Forbidden with message 'You can only view your own attendance records'."
+      }
+    },
+    {
+      "name": "4. V2 - Attempt Access With Forged 'fallback_secret' Token",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY1ZjFhMTAwMDAwMDAwMDAwMDAwMDAwMSIsInJvbGUiOiJhZG1pbiIsImVtYWlsIjoiZmFrZWFkbWluQGFwZXgubGsiLCJpYXQiOjE3MTAwMDAwMDB9.6n85x6lG2_rS4s50d_Fq1eUv1vQpS4hC5bZ4Q_6rV0s"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/members",
+          "host": ["{{baseUrl}}"],
+          "path": ["members"]
+        },
+        "description": "Token signed using the hardcoded default 'fallback_secret' with role: 'admin'.\nBEFORE: If JWT_SECRET was unset in .env, this forged token granted full admin access.\nAFTER FIX: Centralized jwt config rejects hardcoded defaults and rejects forged signatures, returning 401 Invalid or expired token."
+      }
+    }
+  ]
+}
