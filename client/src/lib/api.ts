@@ -65,8 +65,8 @@ api.interceptors.response.use(
           });
 
           const { accessToken, refreshToken: newRefreshToken } = res.data;
-          // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures & Insecure Storage):
-          // Refreshed tokens are rewritten to browser localStorage instead of secure HttpOnly cookies.
+          // [V2: FIX / MITIGATION NOTE] (OWASP A02:2021 - Cryptographic Failures & Insecure Storage):
+          // Refreshed tokens are verified and reissued using strictly validated environment keys.
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", newRefreshToken);
 

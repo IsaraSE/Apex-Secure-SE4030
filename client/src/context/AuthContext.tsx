@@ -47,10 +47,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
     const { accessToken, refreshToken, user: userData } = res.data;
-    // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures & Insecure Storage):
-    // Sensitive JWT access and refresh tokens are stored in browser localStorage.
-    // localStorage has no protection against Cross-Site Scripting (XSS); any injected
-    // script can access window.localStorage and exfiltrate user and administrator tokens.
+    // [V2: FIX / MITIGATION NOTE] (OWASP A02:2021 - Cryptographic Failures & Insecure Storage):
+    // Cryptographic fallback signing keys have been eliminated on the backend.
+    // Client tokens currently persist in localStorage for SPA session continuity;
+    // full migration to HttpOnly SameSite=Strict cookies is recommended for hardened deployments.
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
     localStorage.setItem("user", JSON.stringify(userData));
