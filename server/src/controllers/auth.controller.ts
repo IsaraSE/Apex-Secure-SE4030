@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/auth";
-import { logger, logSecurityEvent } from "../utils/logger";
+import { logSecurityEvent, respondWithServerError } from "../utils/logger";
 
 const generateTokens = (user: any) => {
   const payload = { id: user._id, role: user.role, email: user.email };
@@ -94,9 +94,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       },
       ...tokens,
     });
-  } catch (error: any) {
-    logger.error("Registration failed", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
-    res.status(500).json({ message: "Registration failed" });
+  } catch (error) {
+    respondWithServerError(req, res, "Registration failed", error);
   }
 };
 
@@ -144,9 +143,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       },
       ...tokens,
     });
-  } catch (error: any) {
-    logger.error("Login failed", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
-    res.status(500).json({ message: "Login failed" });
+  } catch (error) {
+    respondWithServerError(req, res, "Login failed", error);
   }
 };
 
@@ -178,14 +176,12 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
     const tokens = generateTokens(user);
     res.json({ ...tokens });
-  } catch (error: unknown) {
-    logger.warn("Refresh token failed", {
-      stack: error instanceof Error ? error.stack : undefined,
-      method: req.method,
-      path: req.originalUrl,
-      ip: req.ip,
+  } catch (error) {
+    respondWithServerError(req, res, "Refresh token failed", error, {
+      status: 401,
+      clientMessage: "Invalid or expired refresh token",
+      level: "warn",
     });
-    res.status(401).json({ message: "Invalid or expired refresh token" });
   }
 };
 
@@ -197,9 +193,8 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
     res.json(user);
-  } catch (error: any) {
-    logger.error("Failed to fetch profile", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
-    res.status(500).json({ message: "Failed to fetch profile" });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to fetch profile", error);
   }
 };
 
@@ -254,9 +249,8 @@ export const updateMe = async (req: AuthRequest, res: Response): Promise<void> =
     }
 
     res.json({ message: "Profile updated successfully", user });
-  } catch (error: any) {
-    logger.error("Failed to update profile", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
-    res.status(500).json({ message: "Failed to update profile" });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to update profile", error);
   }
 };
 
@@ -300,9 +294,8 @@ export const changeMyPassword = async (req: AuthRequest, res: Response): Promise
     logSecurityEvent("PASSWORD_CHANGED", req, { userId: user._id });
 
     res.json({ message: "Password changed successfully." });
-  } catch (error: any) {
-    logger.error("Failed to change password", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
-    res.status(500).json({ message: "Failed to change password" });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to change password", error);
   }
 };
 
@@ -346,8 +339,7 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response): Promise<
     logSecurityEvent("ACCOUNT_DELETED", req, { userId });
 
     res.json({ message: "Account deleted successfully." });
-  } catch (error: any) {
-    logger.error("Failed to delete account", { stack: error.stack, method: req.method, path: req.originalUrl, ip: req.ip });
-    res.status(500).json({ message: "Failed to delete account" });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to delete account", error);
   }
 };

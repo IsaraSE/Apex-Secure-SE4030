@@ -1,5 +1,5 @@
 import path from "node:path";
-import { Request } from "express";
+import { Request, Response } from "express";
 import winston from "winston";
 
 const logsDir = path.join(process.cwd(), "logs");
@@ -40,4 +40,29 @@ export const logSecurityEvent = (
     path: req.originalUrl,
     ...meta,
   });
+};
+
+interface RespondWithServerErrorOptions {
+  status?: number;
+  clientMessage?: string;
+  level?: "error" | "warn";
+}
+
+export const respondWithServerError = (
+  req: Request,
+  res: Response,
+  logMessage: string,
+  error: unknown,
+  options: RespondWithServerErrorOptions = {}
+): void => {
+  const { status = 500, clientMessage = logMessage, level = "error" } = options;
+
+  logger[level](logMessage, {
+    stack: error instanceof Error ? error.stack : undefined,
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+  });
+
+  res.status(status).json({ message: clientMessage });
 };
