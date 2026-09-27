@@ -34,7 +34,7 @@
   ],
   "item": [
     {
-      "name": "0. Setup - Login as Dinesh (Member)",
+      "name": "0. Setup - Login as Tharanga (Member)",
       "event": [
         {
           "listen": "test",
@@ -61,14 +61,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"dinesh@apex.lk\",\n  \"password\": \"password123\"\n}"
+          "raw": "{\n  \"email\": \"tharanga@apex.lk\",\n  \"password\": \"password123\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/login",
           "host": ["{{baseUrl}}"],
           "path": ["auth", "login"]
         },
-        "description": "Logs in as demo member Dinesh and automatically saves accessToken and memberId to collection variables."
+        "description": "Logs in as member Tharanga and automatically saves accessToken and memberId to collection variables."
       }
     },
     {
