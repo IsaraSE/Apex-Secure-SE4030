@@ -1,0 +1,93 @@
+                    
+                    
+┌──────────────────┐
+│ 17 Code Findings │
+└──────────────────┘
+                                      
+    client\src\context\AuthContext.tsx
+    ❯❱ apex-localstorage-jwt-storage
+          ❰❰ Blocking ❱❱
+          Cryptographic Failures / Insecure Session Storage (A02/A07): Sensitive authentication tokens are
+          stored in browser localStorage, making them accessible to XSS attacks.                          
+                                                                                                          
+           49┆ localStorage.setItem("accessToken", accessToken);
+            ⋮┆----------------------------------------
+           50┆ localStorage.setItem("refreshToken", refreshToken);
+            ⋮┆----------------------------------------
+           58┆ localStorage.setItem("accessToken", accessToken);
+            ⋮┆----------------------------------------
+           59┆ localStorage.setItem("refreshToken", refreshToken);
+                         
+    client\src\lib\api.ts
+    ❯❱ apex-localstorage-jwt-storage
+          ❰❰ Blocking ❱❱
+          Cryptographic Failures / Insecure Session Storage (A02/A07): Sensitive authentication tokens are
+          stored in browser localStorage, making them accessible to XSS attacks.                          
+                                                                                                          
+           66┆ localStorage.setItem("accessToken", accessToken);
+            ⋮┆----------------------------------------
+           67┆ localStorage.setItem("refreshToken", newRefreshToken);
+                     
+    server\src\app.ts
+    ❯❱ apex-permissive-cors-regex
+          ❰❰ Blocking ❱❱
+          Security Misconfiguration (A05): Overly permissive CORS check allows any arbitrary subdomain ending
+          with .vercel.app. Malicious actors on vercel.app can access credentials.                           
+                                                                                                             
+           46┆ return parsedOrigin.protocol === "https:" && parsedOrigin.hostname.endsWith(".vercel.app");
+                                             
+    server\src\controllers\auth.controller.ts
+   ❯❯❱ apex-hardcoded-jwt-fallback-secret
+          ❰❰ Blocking ❱❱
+          Cryptographic Failure (A02): Hardcoded JWT fallback secret detected. If JWT_SECRET environment
+          variable is missing, an attacker can forge administrative tokens.                             
+                                                                                                        
+           14┆ process.env.JWT_SECRET || "fallback_secret",
+            ⋮┆----------------------------------------
+           20┆ process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret",
+            ⋮┆----------------------------------------
+          149┆ process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret"
+                                                  
+    server\src\controllers\inventory.controller.ts
+    ❯❱ apex-nosql-regex-injection
+          ❰❰ Blocking ❱❱
+          Injection (A03): Direct insertion of user-supplied search string into MongoDB $regex query without
+          sanitization enables ReDoS or operator injection.                                                 
+                                                                                                            
+           11┆ { itemName: { $regex: search, $options: "i" } },
+                                               
+    server\src\controllers\member.controller.ts
+    ❯❱ apex-nosql-regex-injection
+          ❰❰ Blocking ❱❱
+          Injection (A03): Direct insertion of user-supplied search string into MongoDB $regex query without
+          sanitization enables ReDoS or operator injection.                                                 
+                                                                                                            
+           14┆ { name: { $regex: search, $options: "i" } },
+            ⋮┆----------------------------------------
+           15┆ { email: { $regex: search, $options: "i" } },
+                                                
+    server\src\controllers\session.controller.ts
+    ❯❱ apex-nosql-regex-injection
+          ❰❰ Blocking ❱❱
+          Injection (A03): Direct insertion of user-supplied search string into MongoDB $regex query without
+          sanitization enables ReDoS or operator injection.                                                 
+                                                                                                            
+           69┆ { eventName: { $regex: search, $options: "i" } },
+                                 
+    server\src\middleware\auth.ts
+   ❯❯❱ apex-hardcoded-jwt-fallback-secret
+          ❰❰ Blocking ❱❱
+          Cryptographic Failure (A02): Hardcoded JWT fallback secret detected. If JWT_SECRET environment
+          variable is missing, an attacker can forge administrative tokens.                             
+                                                                                                        
+           25┆ const secret = process.env.JWT_SECRET || "fallback_secret";
+            ⋮┆----------------------------------------
+           52┆ const secret = process.env.JWT_SECRET || "fallback_secret";
+                                    
+    server\src\routes\auth.routes.ts
+   ❯❯❱ apex-missing-rate-limiting-auth
+          ❰❰ Blocking ❱❱
+          Insecure Design (A04): Authentication endpoints lack rate limiting middleware, leaving routes
+          vulnerable to automated brute-force and credential stuffing.                                 
+                                                                                                       
+           24┆ router.post("/login", validate(loginSchema), login);
