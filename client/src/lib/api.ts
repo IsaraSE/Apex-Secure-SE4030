@@ -1,3 +1,5 @@
+// [SECURITY][V5] VULNERABLE: axios 1.0.0-1.17.0 has SSRF and prototype-pollution issues. A06:2021
+
 import axios from "axios";
 
 const normalizeApiBaseUrl = (value: string | undefined): string => {

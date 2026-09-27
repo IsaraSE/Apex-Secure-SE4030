@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import User from "../models/User";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -9,11 +10,11 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticate = (
+export const authenticate = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -29,6 +30,14 @@ export const authenticate = (
       email: string;
     };
 
+    // SECURITY FIX (V4): Added active-status validation to ensure deactivated accounts
+    // cannot access protected API routes, even if their token hasn't expired yet.
+    const user = await User.findById(decoded.id);
+    if (!user || user.status !== "active") {
+      res.status(401).json({ message: "Session invalid. Account is deactivated." });
+      return;
+    }
+
     req.user = decoded;
     next();
   } catch (error) {
@@ -36,11 +45,11 @@ export const authenticate = (
   }
 };
 
-export const authenticateOptional = (
+export const authenticateOptional = async (
   req: AuthRequest,
   _res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -56,7 +65,12 @@ export const authenticateOptional = (
       email: string;
     };
 
-    req.user = decoded;
+    // SECURITY FIX (V4): Ensure we do not implicitly authenticate an inactive account.
+    const user = await User.findById(decoded.id);
+    if (user && user.status === "active") {
+      req.user = decoded;
+    }
+    
     next();
   } catch {
     next();

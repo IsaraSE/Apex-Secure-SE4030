@@ -93,6 +93,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       ...tokens,
     });
   } catch (error: any) {
+    // Vulnerability 8: verbose error disclosure — error.message (which can
+    // include raw Mongoose validation/driver exception text, e.g. schema
+    // field names) is returned directly to the client instead of a generic
+    // message, and no security event is logged for this failure.
     res.status(500).json({ message: "Registration failed", error: error.message });
   }
 };
@@ -101,6 +105,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
+    // Vulnerability 8 (OWASP A09:2021 - Security Logging and Monitoring
+    // Failures): failed authentication attempts (unknown email or wrong
+    // password) are never logged anywhere. There is no audit trail to
+    // detect brute-force/credential-stuffing attempts against this endpoint.
     const user = await User.findOne({ email });
     if (!user) {
       res.status(401).json({ message: "Invalid email or password" });
@@ -133,6 +141,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       ...tokens,
     });
   } catch (error: any) {
+    // Vulnerability 8: verbose error disclosure — error.message (e.g. raw
+    // Mongoose/driver exception text) is returned directly to the client,
+    // and this failure path is not logged for audit purposes either.
     res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
@@ -153,6 +164,13 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     const user = await User.findById(decoded.id);
     if (!user) {
       res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    // SECURITY FIX (V4): Added active-status validation to ensure deactivated accounts
+    // cannot use previously issued refresh tokens to obtain new access credentials.
+    if (user.status !== "active") {
+      res.status(403).json({ message: "Account is deactivated. Cannot refresh token." });
       return;
     }
 
