@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
+import { getJwtSecret } from "../config/jwt";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -23,10 +24,10 @@ export const authenticate = async (
     }
 
     const token = authHeader.split(" ")[1];
-    // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures):
-    // Verification relies on a hardcoded fallback secret ("fallback_secret") when process.env.JWT_SECRET
-    // is missing. An attacker can forge arbitrary JWTs (including role: "admin") signed with this key.
-    const secret = process.env.JWT_SECRET || "fallback_secret";
+    // [V2: FIX] (OWASP A02:2021 - Cryptographic Failures):
+    // Cryptographic secret retrieved via getJwtSecret() which enforces strict validation
+    // and throws immediately if JWT_SECRET is missing or matches known weak fallback keys.
+    const secret = getJwtSecret();
     const decoded = jwt.verify(token, secret) as {
       id: string;
       role: string;
@@ -61,9 +62,9 @@ export const authenticateOptional = async (
     }
 
     const token = authHeader.split(" ")[1];
-    // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures):
-    // Hardcoded fallback secret used for optional authentication decoding.
-    const secret = process.env.JWT_SECRET || "fallback_secret";
+    // [V2: FIX] (OWASP A02:2021 - Cryptographic Failures):
+    // Use getJwtSecret() to enforce valid signing key for optional authentication.
+    const secret = getJwtSecret();
     const decoded = jwt.verify(token, secret) as {
       id: string;
       role: string;
