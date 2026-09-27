@@ -104,6 +104,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
+    // Vulnerability 8 (OWASP A09:2021 - Security Logging and Monitoring
+    // Failures): failed authentication attempts (unknown email or wrong
+    // password) are never logged anywhere. There is no audit trail to
+    // detect brute-force/credential-stuffing attempts against this endpoint.
     const user = await User.findOne({ email });
     if (!user) {
       logSecurityEvent("LOGIN_FAILED_UNKNOWN_EMAIL", req, { email });
@@ -162,6 +166,13 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     const user = await User.findById(decoded.id);
     if (!user) {
       res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    // SECURITY FIX (V4): Added active-status validation to ensure deactivated accounts
+    // cannot use previously issued refresh tokens to obtain new access credentials.
+    if (user.status !== "active") {
+      res.status(403).json({ message: "Account is deactivated. Cannot refresh token." });
       return;
     }
 

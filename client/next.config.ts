@@ -1,3 +1,5 @@
+// [SECURITY][V5] VULNERABLE: next 16.2.2 has critical RCE, SSRF and middleware-bypass issues. A06:2021
+
 import type { NextConfig } from "next";
 
 const apiProxyTargetFromEnv = process.env.API_PROXY_TARGET || process.env.NEXT_PUBLIC_API_PROXY_TARGET;
