@@ -172,6 +172,10 @@ export const createSession = async (req: AuthRequest, res: Response): Promise<vo
 
 export const updateSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // [V3: VULNERABLE CODE] - Mass Assignment injection point
+    // validate.ts does not replace req.body with the validated Zod output.
+    // Spreading the original req.body therefore copies attacker-supplied
+    // properties (such as "status") into the update payload.
     const payload = { ...req.body };
     const sessionId = String(req.params.id);
 
@@ -241,6 +245,7 @@ export const updateSession = async (req: AuthRequest, res: Response): Promise<vo
       (payload.endTime && payload.endTime !== existing.endTime) ||
       (payload.location && payload.location !== existing.location);
 
+    // [V3: VULNERABLE SINK] Unfiltered payload is written directly to MongoDB.
     const session = await Session.findByIdAndUpdate(
       sessionId,
       { $set: payload },
