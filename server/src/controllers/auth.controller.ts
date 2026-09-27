@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/auth";
 import { logSecurityEvent, respondWithServerError } from "../utils/logger";
+import crypto from "crypto";
 
 const generateTokens = (user: any) => {
   const payload = { id: user._id, role: user.role, email: user.email };
@@ -401,7 +402,7 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
 
     if (!user) {
       const salt = await bcrypt.genSalt(12);
-      const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), salt);
+      const randomPassword = await bcrypt.hash(crypto.randomBytes(4).toString("hex"), salt);
       
       user = await User.create({
         name,
