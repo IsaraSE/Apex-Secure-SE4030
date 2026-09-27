@@ -155,10 +155,13 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // SECURITY: Current refresh-token processing verifies token validity
-    // and user existence but does not verify whether the account is active.
-    // A refresh token issued before deactivation can therefore be used
-    // to obtain new authentication credentials.
+    // SECURITY FIX (V4): Added active-status validation to ensure deactivated accounts
+    // cannot use previously issued refresh tokens to obtain new access credentials.
+    if (user.status !== "active") {
+      res.status(403).json({ message: "Account is deactivated. Cannot refresh token." });
+      return;
+    }
+
     const tokens = generateTokens(user);
     res.json({ ...tokens });
   } catch (error: unknown) {
