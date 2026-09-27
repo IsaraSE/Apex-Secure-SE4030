@@ -12,6 +12,11 @@ const generateTokens = (user: any) => {
   const accessExpiresIn = (process.env.JWT_EXPIRES_IN || "1d") as jwt.SignOptions["expiresIn"];
   const refreshExpiresIn = (process.env.JWT_REFRESH_EXPIRES_IN || "7d") as jwt.SignOptions["expiresIn"];
 
+  // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures):
+  // Hardcoded fallback secrets ("fallback_secret" / "fallback_refresh_secret") are used
+  // if process.env.JWT_SECRET or process.env.JWT_REFRESH_SECRET is missing. An attacker
+  // aware of these default strings can sign their own arbitrary JWT tokens (e.g. with role: "admin")
+  // and achieve complete authentication bypass without valid credentials.
   const accessToken = jwt.sign(
     payload,
     process.env.JWT_SECRET || "fallback_secret",
@@ -158,6 +163,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures):
+    // Fallback secret literal used for verifying refresh tokens. If JWT_REFRESH_SECRET
+    // is omitted or fails to load, forged refresh tokens signed with "fallback_refresh_secret"
+    // will be accepted, allowing unauthorized credential regeneration.
     const decoded = jwt.verify(
       refreshToken,
       process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret"
