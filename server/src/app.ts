@@ -1,3 +1,5 @@
+// [SECURITY][V5] VULNERABLE: express pulls in outdated qs/body-parser with DoS bugs. A06:2021
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -9,6 +11,7 @@ import inventoryRoutes from "./routes/inventory.routes";
 import sessionRoutes from "./routes/session.routes";
 import paymentRoutes from "./routes/payment.routes";
 import notificationRoutes from "./routes/notification.routes";
+import { mongoSanitize } from "./middleware/mongoSanitize";
 
 const normalizeOrigin = (value: string | undefined): string | undefined => {
   const rawValue = value?.trim();
@@ -51,6 +54,10 @@ const isAllowedCorsOrigin = (origin: string | undefined): boolean => {
 
 const app = express();
 
+// Vulnerability 7 (OWASP A05:2021 - Security Misconfiguration, DAST/ZAP):
+// ZAP flagged missing security headers (CSP, HSTS, X-Content-Type-Options, etc.)
+// on this Express API. helmet() below sets those headers by default; the
+// matching gap on the Next.js client is noted in client/next.config.ts.
 app.use(helmet());
 app.use(
   cors({
@@ -67,6 +74,8 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// [SECURITY][V6] FIXED: strip MongoDB operators from all incoming request data
+app.use(mongoSanitize);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);
