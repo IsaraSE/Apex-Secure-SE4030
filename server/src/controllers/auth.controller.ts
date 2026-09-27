@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { OAuth2Client } from "google-auth-library";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
@@ -317,3 +318,96 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response): Promise<
     res.status(500).json({ message: "Failed to delete account", error: error.message });
   }
 };
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID");
+
+export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { credential, email: bodyEmail, name: bodyName, googleId } = req.body;
+    
+    if (!credential) {
+      res.status(400).json({ message: "Google credential is required" });
+      return;
+    }
+
+    let email: string;
+    let name: string;
+
+    // If email and googleId are provided, it's the implicit flow (custom button)
+    // Verify by calling Google's userinfo endpoint with the access token
+    if (bodyEmail && googleId) {
+      const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${credential}` },
+      });
+
+      if (!userInfoResponse.ok) {
+        res.status(401).json({ message: "Invalid Google access token" });
+        return;
+      }
+
+      const userInfo = await userInfoResponse.json() as any;
+      
+      if (userInfo.sub !== googleId || userInfo.email?.toLowerCase() !== bodyEmail.toLowerCase()) {
+        res.status(401).json({ message: "Google token verification failed" });
+        return;
+      }
+
+      email = userInfo.email.toLowerCase();
+      name = userInfo.name || bodyName || "Google User";
+    } else {
+      // Original ID token flow (GoogleLogin component)
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID",
+      });
+      
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        res.status(400).json({ message: "Invalid Google token" });
+        return;
+      }
+
+      email = payload.email.toLowerCase();
+      name = payload.name || "Google User";
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const salt = await bcrypt.genSalt(12);
+      const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), salt);
+      
+      user = await User.create({
+        name,
+        email,
+        password: randomPassword,
+        role: "member",
+        sport: "gym",
+        membershipType: "monthly",
+      });
+    }
+
+    if (user.status === "inactive") {
+      res.status(403).json({ message: "Account is deactivated. Contact admin." });
+      return;
+    }
+
+    const tokens = generateTokens(user);
+
+    res.json({
+      message: "Google Login successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        sport: user.sport,
+        status: user.status,
+      },
+      ...tokens,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: "Google Login failed", error: error.message });
+  }
+};
+

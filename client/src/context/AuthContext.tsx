@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => void;
@@ -52,6 +53,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
   };
 
+  const googleLogin = async (credential: string) => {
+    const res = await api.post("/auth/google-login", { credential });
+    const { accessToken, refreshToken, user: userData } = res.data;
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+  };
+
   const register = async (data: any) => {
     const res = await api.post("/auth/register", data);
     const { accessToken, refreshToken, user: userData } = res.data;
@@ -74,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         login,
+        googleLogin,
         register,
         refreshUser: loadUser,
         logout,
