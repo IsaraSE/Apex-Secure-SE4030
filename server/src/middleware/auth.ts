@@ -23,6 +23,9 @@ export const authenticate = async (
     }
 
     const token = authHeader.split(" ")[1];
+    // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures):
+    // Verification relies on a hardcoded fallback secret ("fallback_secret") when process.env.JWT_SECRET
+    // is missing. An attacker can forge arbitrary JWTs (including role: "admin") signed with this key.
     const secret = process.env.JWT_SECRET || "fallback_secret";
     const decoded = jwt.verify(token, secret) as {
       id: string;
@@ -58,6 +61,8 @@ export const authenticateOptional = async (
     }
 
     const token = authHeader.split(" ")[1];
+    // Vulnerability 2 (OWASP A02:2021 - Cryptographic Failures):
+    // Hardcoded fallback secret used for optional authentication decoding.
     const secret = process.env.JWT_SECRET || "fallback_secret";
     const decoded = jwt.verify(token, secret) as {
       id: string;
