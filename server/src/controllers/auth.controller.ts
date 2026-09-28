@@ -1,23 +1,31 @@
 import { Request, Response } from "express";
+import { OAuth2Client } from "google-auth-library";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
 import { AuthRequest } from "../middleware/auth";
+import { logSecurityEvent, respondWithServerError } from "../utils/logger";
+import crypto from "crypto";
+import { getJwtSecret, getJwtRefreshSecret } from "../config/jwt";
 
 const generateTokens = (user: any) => {
   const payload = { id: user._id, role: user.role, email: user.email };
   const accessExpiresIn = (process.env.JWT_EXPIRES_IN || "1d") as jwt.SignOptions["expiresIn"];
   const refreshExpiresIn = (process.env.JWT_REFRESH_EXPIRES_IN || "7d") as jwt.SignOptions["expiresIn"];
 
+  // [V2: FIX] - Secure Cryptographic Key Management (OWASP A02:2021).
+  // Insecure fallback literals ("fallback_secret" / "fallback_refresh_secret") have been removed.
+  // Secrets are retrieved via getJwtSecret() and getJwtRefreshSecret(), which guarantee
+  // fail-fast startup termination if environment variables are unconfigured or match default strings.
   const accessToken = jwt.sign(
     payload,
-    process.env.JWT_SECRET || "fallback_secret",
+    getJwtSecret(),
     { expiresIn: accessExpiresIn }
   );
 
   const refreshToken = jwt.sign(
     payload,
-    process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret",
+    getJwtRefreshSecret(),
     { expiresIn: refreshExpiresIn }
   );
 
@@ -79,6 +87,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const tokens = generateTokens(user);
 
+    logSecurityEvent("REGISTRATION", req, { email: user.email, role: user.role });
+
     res.status(201).json({
       message: "Registration successful",
       user: {
@@ -91,8 +101,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       },
       ...tokens,
     });
-  } catch (error: any) {
-    res.status(500).json({ message: "Registration failed", error: error.message });
+  } catch (error) {
+    respondWithServerError(req, res, "Registration failed", error);
   }
 };
 
@@ -100,24 +110,33 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
+    // Vulnerability 8 (OWASP A09:2021 - Security Logging and Monitoring
+    // Failures): failed authentication attempts (unknown email or wrong
+    // password) are never logged anywhere. There is no audit trail to
+    // detect brute-force/credential-stuffing attempts against this endpoint.
     const user = await User.findOne({ email });
     if (!user) {
+      logSecurityEvent("LOGIN_FAILED_UNKNOWN_EMAIL", req, { email });
       res.status(401).json({ message: "Invalid email or password" });
       return;
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      logSecurityEvent("LOGIN_FAILED_BAD_PASSWORD", req, { email, userId: user._id });
       res.status(401).json({ message: "Invalid email or password" });
       return;
     }
 
     if (user.status === "inactive") {
+      logSecurityEvent("LOGIN_FAILED_INACTIVE_ACCOUNT", req, { email, userId: user._id });
       res.status(403).json({ message: "Account is deactivated. Contact admin." });
       return;
     }
 
     const tokens = generateTokens(user);
+
+    logSecurityEvent("LOGIN_SUCCESS", req, { email, userId: user._id });
 
     res.json({
       message: "Login successful",
@@ -131,8 +150,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       },
       ...tokens,
     });
-  } catch (error: any) {
-    res.status(500).json({ message: "Login failed", error: error.message });
+  } catch (error) {
+    respondWithServerError(req, res, "Login failed", error);
   }
 };
 
@@ -144,9 +163,11 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // [V2: FIX] - Secure Refresh Token Verification (OWASP A02:2021).
+    // Uses validated getJwtRefreshSecret() with zero fallback literals.
     const decoded = jwt.verify(
       refreshToken,
-      process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret"
+      getJwtRefreshSecret()
     ) as any;
 
     const user = await User.findById(decoded.id);
@@ -155,11 +176,21 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // SECURITY FIX (V4): Added active-status validation to ensure deactivated accounts
+    // cannot use previously issued refresh tokens to obtain new access credentials.
+    if (user.status !== "active") {
+      res.status(403).json({ message: "Account is deactivated. Cannot refresh token." });
+      return;
+    }
+
     const tokens = generateTokens(user);
     res.json({ ...tokens });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Invalid refresh token";
-    res.status(401).json({ message });
+  } catch (error) {
+    respondWithServerError(req, res, "Refresh token failed", error, {
+      status: 401,
+      clientMessage: "Invalid or expired refresh token",
+      level: "warn",
+    });
   }
 };
 
@@ -171,8 +202,8 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
     res.json(user);
-  } catch (error: any) {
-    res.status(500).json({ message: "Failed to fetch profile", error: error.message });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to fetch profile", error);
   }
 };
 
@@ -227,8 +258,8 @@ export const updateMe = async (req: AuthRequest, res: Response): Promise<void> =
     }
 
     res.json({ message: "Profile updated successfully", user });
-  } catch (error: any) {
-    res.status(500).json({ message: "Failed to update profile", error: error.message });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to update profile", error);
   }
 };
 
@@ -269,9 +300,11 @@ export const changeMyPassword = async (req: AuthRequest, res: Response): Promise
     user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
 
+    logSecurityEvent("PASSWORD_CHANGED", req, { userId: user._id });
+
     res.json({ message: "Password changed successfully." });
-  } catch (error: any) {
-    res.status(500).json({ message: "Failed to change password", error: error.message });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to change password", error);
   }
 };
 
@@ -312,8 +345,103 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response): Promise<
 
     await User.findByIdAndDelete(userId);
 
+    logSecurityEvent("ACCOUNT_DELETED", req, { userId });
+
     res.json({ message: "Account deleted successfully." });
-  } catch (error: any) {
-    res.status(500).json({ message: "Failed to delete account", error: error.message });
+  } catch (error) {
+    respondWithServerError(req, res, "Failed to delete account", error);
   }
 };
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID");
+
+export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { credential, email: bodyEmail, name: bodyName, googleId } = req.body;
+    
+    if (!credential) {
+      res.status(400).json({ message: "Google credential is required" });
+      return;
+    }
+
+    let email: string;
+    let name: string;
+
+    // If email and googleId are provided, it's the implicit flow (custom button)
+    // Verify by calling Google's userinfo endpoint with the access token
+    if (bodyEmail && googleId) {
+      const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${credential}` },
+      });
+
+      if (!userInfoResponse.ok) {
+        res.status(401).json({ message: "Invalid Google access token" });
+        return;
+      }
+
+      const userInfo = await userInfoResponse.json() as any;
+      
+      if (userInfo.sub !== googleId || userInfo.email?.toLowerCase() !== bodyEmail.toLowerCase()) {
+        res.status(401).json({ message: "Google token verification failed" });
+        return;
+      }
+
+      email = userInfo.email.toLowerCase();
+      name = userInfo.name || bodyName || "Google User";
+    } else {
+      // Original ID token flow (GoogleLogin component)
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID",
+      });
+      
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        res.status(400).json({ message: "Invalid Google token" });
+        return;
+      }
+
+      email = payload.email.toLowerCase();
+      name = payload.name || "Google User";
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const salt = await bcrypt.genSalt(12);
+      const randomPassword = await bcrypt.hash(crypto.randomBytes(4).toString("hex"), salt);
+      
+      user = await User.create({
+        name,
+        email,
+        password: randomPassword,
+        role: "member",
+        sport: "gym",
+        membershipType: "monthly",
+      });
+    }
+
+    if (user.status === "inactive") {
+      res.status(403).json({ message: "Account is deactivated. Contact admin." });
+      return;
+    }
+
+    const tokens = generateTokens(user);
+
+    res.json({
+      message: "Google Login successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        sport: user.sport,
+        status: user.status,
+      },
+      ...tokens,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: "Google Login failed", error: error.message });
+  }
+};
+

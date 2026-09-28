@@ -3,10 +3,17 @@ import mongoose from "mongoose";
 import User from "../models/User";
 import Session from "../models/Session";
 import { AuthRequest } from "../middleware/auth";
+import { toSafeString } from "../utils/sanitize";
 
 export const getAllMembers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { search, role, status, sport, page = "1", limit = "20" } = req.query;
+    // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
+    const search = toSafeString(req.query.search);
+    const role = toSafeString(req.query.role);
+    const status = toSafeString(req.query.status);
+    const sport = toSafeString(req.query.sport);
+    const page = toSafeString(req.query.page) ?? "1";
+    const limit = toSafeString(req.query.limit) ?? "20";
 
     const query: any = {};
     if (search) {
@@ -18,6 +25,14 @@ export const getAllMembers = async (req: AuthRequest, res: Response): Promise<vo
     if (role) query.role = role;
     if (status) query.status = status;
     if (sport) query.sport = sport;
+
+    // [V1: FIX] - Broken Access Control & Unrestricted Data Exposure (OWASP A01:2021).
+    // Enforce defensive role check: standard members are prohibited from querying the member directory.
+    // Only administrators and coaches are authorized to list member records.
+    if (req.user?.role !== "admin" && req.user?.role !== "coach") {
+      res.status(403).json({ message: "Access denied. Insufficient permissions to list members." });
+      return;
+    }
 
     if (req.user?.role === "coach") {
       const coach = await User.findById(req.user.id).select("sport");
@@ -34,6 +49,7 @@ export const getAllMembers = async (req: AuthRequest, res: Response): Promise<vo
     const skip = (pageNum - 1) * limitNum;
 
     const [members, total] = await Promise.all([
+      // [SECURITY][V6] VULNERABLE: unsanitized query object is passed directly to User.find() and User.countDocuments(). OWASP A03:2021
       User.find(query).select("-password").skip(skip).limit(limitNum).sort({ createdAt: -1 }),
       User.countDocuments(query),
     ]);
@@ -54,6 +70,15 @@ export const getAllMembers = async (req: AuthRequest, res: Response): Promise<vo
 export const getMemberById = async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
+
+    // [V1: FIX] - Prevent IDOR (Insecure Direct Object Reference - OWASP A01:2021).
+    // Validate ObjectId format and enforce strict ownership verification so members
+    // cannot query or view profile details of other members.
+    if (typeof req.params.id !== "string" || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ message: "Invalid member ID format." });
+      return;
+    }
+
     const member = await User.findById(req.params.id).select("-password");
     if (!member) {
       res.status(404).json({ message: "Member not found" });
@@ -153,17 +178,28 @@ export const toggleMemberStatus = async (req: Request, res: Response): Promise<v
 
 export const getAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // [V1: FIX] - Prevent IDOR (Insecure Direct Object Reference - OWASP A01:2021).
+    // Validate ObjectId format and enforce strict ownership verification:
+    // Standard members may only view their own attendance (req.user.id === member._id),
+    // and coaches may only view attendance for members registered in their sport discipline.
+    if (typeof req.params.id !== "string" || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ message: "Invalid member ID format." });
+      return;
+    }
+
+    // [V1: FIX] - Strict Ownership Check (OWASP A01:2021):
+    // Standard members are prohibited from accessing attendance logs of any other member.
+    if (req.user?.role === "member" && req.user.id !== req.params.id) {
+      res.status(403).json({ message: "You can only view your own attendance records." });
+      return;
+    }
+
     const member = await User.findById(req.params.id)
       .select("attendance name sport role")
       .populate("attendance.sessionId", "eventName date location");
 
     if (!member) {
       res.status(404).json({ message: "Member not found" });
-      return;
-    }
-
-    if (req.user?.role === "member" && req.user.id !== member._id.toString()) {
-      res.status(403).json({ message: "Members can only view their own attendance." });
       return;
     }
 
@@ -187,7 +223,8 @@ export const getAttendance = async (req: AuthRequest, res: Response): Promise<vo
 
 export const getDailyAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { date } = req.query;
+    // [SECURITY][V6] VULNERABLE: "date" from req.query is not type-checked (can be an object/array instead of a string). OWASP A03:2021
+    const date = toSafeString(req.query.date);
     const targetDate = date ? new Date(date as string) : new Date();
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);

@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => void;
@@ -46,6 +47,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
     const { accessToken, refreshToken, user: userData } = res.data;
+    // [V2: FIX / MITIGATION NOTE] (OWASP A02:2021 - Cryptographic Failures & Insecure Storage):
+    // Cryptographic fallback signing keys have been eliminated on the backend.
+    // Client tokens currently persist in localStorage for SPA session continuity;
+    // full migration to HttpOnly SameSite=Strict cookies is recommended for hardened deployments.
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const googleLogin = async (credential: string) => {
+    const res = await api.post("/auth/google-login", { credential });
+    const { accessToken, refreshToken, user: userData } = res.data;
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
     localStorage.setItem("user", JSON.stringify(userData));
@@ -74,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         login,
+        googleLogin,
         register,
         refreshUser: loadUser,
         logout,

@@ -5,6 +5,7 @@ import User from "../models/User";
 import { predictAttendance, predictClubProfit } from "../services/prediction.service";
 import { AuthRequest } from "../middleware/auth";
 import { notifyAdmins } from "../services/notification.service";
+import { toSafeString, toSafeObjectId } from "../utils/sanitize";
 
 const normalizeMethod = (method: string | undefined): "cash" | "card_online" | "bank_transfer" | undefined => {
   if (!method) return undefined;
@@ -21,8 +22,12 @@ const validateAmountByMethod = (amount: number, method?: string): string | null 
 
 export const getAllPayments = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, method, startDate, endDate, memberId } = req.query;
-
+    // [SECURITY][V6] VULNERABLE: NoSQL injection - req.query values (status, method, memberId, dates) are used in the Mongo filter without type checking (e.g. ?status[$ne]=x). OWASP A03:2021
+    const status = toSafeString(req.query.status);
+    const method = toSafeString(req.query.method);
+    const startDate = toSafeString(req.query.startDate);
+    const endDate = toSafeString(req.query.endDate);
+    const memberId = toSafeObjectId(req.query.memberId);
     const query: any = {};
     if (status) query.status = status;
     if (method) query.method = method;
@@ -37,6 +42,7 @@ export const getAllPayments = async (req: AuthRequest, res: Response): Promise<v
       if (endDate) query.date.$lte = new Date(endDate as string);
     }
 
+    // [SECURITY][V6] VULNERABLE: unsanitized query object is passed directly to Payment.find(). OWASP A03:2021
     const payments = await Payment.find(query)
       .populate("memberId", "name email sport")
       .populate("requestedBy", "name email")

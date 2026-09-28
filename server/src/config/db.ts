@@ -1,3 +1,5 @@
+// [SECURITY][V5] VULNERABLE: mongoose 8.0.0-8.24.0 has prototype pollution (GHSA-664h-wqgq-64gw). A06:2021
+
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 

@@ -1,3 +1,5 @@
+// [SECURITY][V5] VULNERABLE: axios 1.0.0-1.17.0 has SSRF and prototype-pollution issues. A06:2021
+
 import axios from "axios";
 
 const normalizeApiBaseUrl = (value: string | undefined): string => {
@@ -63,6 +65,8 @@ api.interceptors.response.use(
           });
 
           const { accessToken, refreshToken: newRefreshToken } = res.data;
+          // [V2: FIX / MITIGATION NOTE] (OWASP A02:2021 - Cryptographic Failures & Insecure Storage):
+          // Refreshed tokens are verified and reissued using strictly validated environment keys.
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", newRefreshToken);
 
